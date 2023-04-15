@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/google/uuid"
 	models "github.com/jyoonie/wd_models"
 )
 
@@ -16,8 +15,15 @@ type Client struct {
 	baseURL string
 }
 
-func (c *Client) GetUser(ctx context.Context, id uuid.UUID) (*models.User, error) {
-	targetURL := fmt.Sprintf("%s%s%s", c.baseURL, "/users/", id.String())
+func New() *Client {
+	return &Client{
+		hc:      *http.DefaultClient,
+		baseURL: "", //set this later once the user service URL is known
+	}
+}
+
+func (c *Client) GetUser(ctx context.Context, id string) (*models.User, error) {
+	targetURL := fmt.Sprintf("%s%s%s", c.baseURL, "/users/", id)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
@@ -101,6 +107,27 @@ func (c *Client) UpdateUser(ctx context.Context, u models.User) (*models.User, e
 	}
 
 	return updatedUser, nil
+}
+
+func (c *Client) DeleteUser(ctx context.Context, id string) error {
+	targetURL := fmt.Sprintf("%s%s%s", c.baseURL, "/users/", id)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, targetURL, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request to delete user: %w", err)
+	}
+
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return fmt.Errorf("error making request to delete user: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error deleting user, received status %d from service", resp.StatusCode)
+	}
+
+	return nil
 }
 
 //wrapped error?
